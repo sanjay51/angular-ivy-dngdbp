@@ -20,7 +20,7 @@ export class AppComponent {
 
   @HostListener('document:keydown.escape', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent) {
-    alert('hi');
+    this.state.mode = 'hover';
   }
 
   state = {
@@ -30,6 +30,7 @@ export class AppComponent {
     mode: 'hover', // hover, insert, selected
     prevHover: null,
     prevHighlightedEdgeElement: null,
+    prevPseudoElement: null,
   };
 
   constructor(@Inject(DOCUMENT) private document: Document) {}
@@ -121,6 +122,35 @@ export class AppComponent {
 
     paintAllBorders([e]);
     this.state.prevHover = e;
+  }
+
+  showPseudoElement(event: any) {
+    let elementBelowCursor = this.getElementBelowCursor(event);
+
+    if (!elementBelowCursor) {
+      return;
+    }
+
+    if (this.state.prevHighlightedEdgeElement)
+      this.state.prevPseudoElement.remove();
+    let elements = Array.from(elementBelowCursor.childNodes);
+
+    let closestElement = findClosestElement(elements, event.x, event.y);
+
+    if (!closestElement) return;
+
+    let closestEdge = findClosestEdge(
+      closestElement.getBoundingClientRect(),
+      event.x,
+      event.y
+    );
+
+    if (closestEdge == 'left' || closestEdge == 'top') {
+      // show on left
+    } else {
+    }
+
+    this.state.prevPseudoElement = closestElement;
   }
 
   highlightClosestRectangleEdges(event: any) {

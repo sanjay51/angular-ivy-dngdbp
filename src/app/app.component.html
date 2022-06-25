@@ -1,6 +1,7 @@
 <div
   #page
   style="width: 100%; height: 100%; padding: 200px; background: whitesmoke; position: relative"
+  [style.cursor]="state.mode == 'insert' ? 'copy' : 'default'"
   (mousemove)="mouseMove($event)"
   (click)="click($event)"
 >
