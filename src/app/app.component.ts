@@ -29,6 +29,7 @@ export class AppComponent {
 
     mode: 'hover', // hover, insert, selected
     prevHover: null,
+    prevHighlightedEdgeElement: null,
   };
 
   constructor(@Inject(DOCUMENT) private document: Document) {}
@@ -60,7 +61,7 @@ export class AppComponent {
       btn.innerHTML = 'Click Me ' + this.i++;
       btn.style.border = '1px solid green';
       btn.style.padding = '5px';
-      btn.style.margin = '5px';
+      btn.style.margin = '20px';
       btn.classList.add('element');
       this.state.copiedElement = btn;
 
@@ -129,6 +130,8 @@ export class AppComponent {
       return;
     }
 
+    if (this.state.prevHighlightedEdgeElement)
+      resetAllBorders([this.state.prevHighlightedEdgeElement]);
     let elements = Array.from(elementBelowCursor.childNodes);
 
     let closestElement = findClosestElement(elements, event.x, event.y);
@@ -140,6 +143,8 @@ export class AppComponent {
       event.x,
       event.y
     );
+
+    this.state.prevHighlightedEdgeElement = closestElement;
 
     paintEdge(closestElement, closestEdge);
   }
