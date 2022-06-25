@@ -1,13 +1,14 @@
+import { DOCUMENT } from '@angular/common';
 import {
   Component,
   ElementRef,
-  QueryList,
+  HostListener,
+  Inject,
   VERSION,
   ViewChild,
-  ViewChildren,
 } from '@angular/core';
 import { findClosestEdge, findClosestElement } from './algorithms';
-import { paintAllBorders, paintEdge } from './painter';
+import { paintAllBorders, paintEdge, resetAllBorders } from './painter';
 
 @Component({
   selector: 'my-app',
@@ -17,23 +18,143 @@ import { paintAllBorders, paintEdge } from './painter';
 export class AppComponent {
   name = 'Angular ' + VERSION.major;
 
-  constructor() {}
+  @HostListener('document:keydown.escape', ['$event'])
+  handleKeyboardEvent(event: KeyboardEvent) {
+    alert('hi');
+  }
+
+  state = {
+    copiedElement: null,
+    selectedElement: null,
+
+    mode: 'hover', // hover, insert, selected
+    prevHover: null,
+  };
+
+  constructor(@Inject(DOCUMENT) private document: Document) {}
 
   @ViewChild('page') page?: ElementRef;
   @ViewChild('output') output?: ElementRef;
 
-  highlightClosestRectangleEdges(event: any) {
-    let elements = this.page.nativeElement.childNodes;
+  mouseMove(event) {
+    if (this.state.mode == 'insert') {
+      this.highlightClosestRectangleEdges(event);
+    } else if (this.state.mode == 'hover') {
+      this.highlightElementAtPoint(event);
+    } else if (this.state.mode == 'selected') {
+    }
+  }
 
-    paintAllBorders(elements);
-    let closetElement = findClosestElement(elements, event.x, event.y);
+  resetSelectedElement() {
+    if (this.state.selectedElement)
+      resetAllBorders([this.state.selectedElement]);
+    this.state.selectedElement = null;
+    this.state.mode = 'hover';
+  }
+
+  i = 0;
+  click(event) {
+    if (this.state.mode == 'insert') {
+      // insert element
+      let btn = document.createElement('div');
+      btn.innerHTML = 'Click Me ' + this.i++;
+      btn.style.border = '1px solid green';
+      btn.style.padding = '5px';
+      btn.style.margin = '5px';
+      btn.classList.add('element');
+      this.state.copiedElement = btn;
+
+      this.insertElement(event);
+    } else {
+      this.selectElement(event);
+    }
+  }
+
+  selectElement(event) {
+    let e = this.getElementBelowCursor(event);
+
+    if (!e) {
+      this.resetSelectedElement();
+      return;
+    }
+
+    if (this.state.selectedElement) {
+      resetAllBorders([this.state.selectedElement]);
+      if (e == this.state.selectedElement) {
+        this.resetSelectedElement();
+        return; // unselect current element;
+      }
+    }
+    this.state.selectedElement = e;
+    paintAllBorders([e], '2px solid red');
+  }
+
+  insertElement(event) {
+    let container = this.getElementBelowCursor(event);
+    let children = Array.from(container.children);
+
+    let sibling = findClosestElement(children, event.x, event.y);
+
+    let edge = 'left';
+    if (sibling && sibling.getBoundingClientRect)
+      edge = findClosestEdge(sibling.getBoundingClientRect(), event.x, event.y);
+
+    if (edge == 'left' || edge == 'top') {
+      container.insertBefore(this.state.copiedElement, sibling);
+    } else {
+      container.insertBefore(this.state.copiedElement, sibling.nextSibling);
+    }
+  }
+
+  highlightElementAtPoint(event) {
+    let e = this.getElementBelowCursor(event);
+
+    // reset previous hovered element (except if it's selected)
+    if (this.state.prevHover != this.state.selectedElement) {
+      resetAllBorders([this.state.prevHover]);
+    }
+
+    // highlight current hovered element
+    if (!e) return;
+    if (e && e == this.state.selectedElement) return;
+
+    paintAllBorders([e]);
+    this.state.prevHover = e;
+  }
+
+  highlightClosestRectangleEdges(event: any) {
+    let elementBelowCursor = this.getElementBelowCursor(event);
+
+    if (!elementBelowCursor) {
+      return;
+    }
+
+    let elements = Array.from(elementBelowCursor.childNodes);
+
+    let closestElement = findClosestElement(elements, event.x, event.y);
+
+    if (!closestElement) return;
 
     let closestEdge = findClosestEdge(
-      closetElement.getBoundingClientRect(),
+      closestElement.getBoundingClientRect(),
       event.x,
       event.y
     );
 
-    paintEdge(closetElement, closestEdge);
+    paintEdge(closestElement, closestEdge);
+  }
+
+  getElementBelowCursor(event: MouseEvent) {
+    let elementFromPoint = this.document.elementFromPoint(event.x, event.y);
+
+    if (!elementFromPoint) {
+      return;
+    }
+
+    let closest = elementFromPoint.classList.contains('element')
+      ? elementFromPoint
+      : elementFromPoint.closest('.element');
+
+    return closest;
   }
 }

@@ -9,6 +9,7 @@ export function findClosestElement(elements: any[], x, y) {
   let minDistance = 1000000;
   let minRect: any;
   for (let rect of elements) {
+    if (!rect || !rect.getBoundingClientRect) continue;
     let distance = findRectangleDistance(rect.getBoundingClientRect(), x, y);
     if (distance < minDistance) {
       minDistance = distance;

@@ -11,8 +11,17 @@ export function paintEdge(element: any, edge: string) {
   edge == 'bottom' ? (element.style.borderBottom = s) : '';
 }
 
-export function paintAllBorders(elements: any[]) {
+export function resetAllBorders(elements: any[]) {
   for (let e of elements) {
     e.style.border = '1px solid red';
+  }
+}
+
+export function paintAllBorders(
+  elements: any[],
+  borderStyle: string = '1px dashed red'
+) {
+  for (let e of elements) {
+    e.style.border = borderStyle;
   }
 }
