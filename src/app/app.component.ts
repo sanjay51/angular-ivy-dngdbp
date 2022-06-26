@@ -77,12 +77,8 @@ export class AppComponent {
       this.cursorUtils.insertElementNearCursor(event, btn);
       this.pseudoElement.remove();
     } else {
-      let element = this.cursorUtils.selectElementAtCursor(event);
-
-      if (!element) {
-        this.cursorUtils.unselectElement();
-        this.state.mode = 'hover';
-      }
+      // hover click
+      this.cursorUtils.selectElementAtCursor(event);
     }
   }
 
