@@ -8,6 +8,11 @@ import {
   ViewChild,
 } from '@angular/core';
 import { findClosestEdge, findClosestElement } from './algorithms';
+import {
+  getElementBelowCursor,
+  hoverElementBelowCursor,
+  insertElementNearCursor,
+} from './cursorUtils';
 import { paintAllBorders, paintEdge, resetAllBorders } from './painter';
 
 @Component({
@@ -54,12 +59,15 @@ export class AppComponent {
 
     if (this.state.mode == 'drag') {
       this.drag(event);
-      this.showPseudoElement(event);
+      this.insertPseudoElement(event);
     } else if (this.state.mode == 'insert') {
-      //this.highlightClosestRectangleEdges(event);
-      this.showPseudoElement(event);
+      this.insertPseudoElement(event);
     } else if (this.state.mode == 'hover') {
-      this.highlightElementAtPoint(event);
+      hoverElementBelowCursor(
+        event,
+        this.state.prevHover,
+        this.state.selectedElement
+      );
     } else if (this.state.mode == 'selected') {
     }
   }
@@ -69,7 +77,7 @@ export class AppComponent {
 
     let e = this.state.dragElement;
     if (!e) {
-      e = this.getElementBelowCursor(event) as HTMLElement;
+      e = getElementBelowCursor(this.document, event) as HTMLElement;
     }
 
     if (!e) return;
@@ -95,15 +103,10 @@ export class AppComponent {
     this.state.dragElement.style.left = '';
     this.state.dragElement.style.top = '';
     this.state.copiedElement = this.state.dragElement;
-    this.insertElement(event);
-    this.state.dragElement = null;
-    this.state.mode = 'hover';
-  }
+    insertElementNearCursor(event, this.state.copiedElement, this.document);
 
-  resetSelectedElement() {
-    if (this.state.selectedElement)
-      resetAllBorders([this.state.selectedElement]);
-    this.state.selectedElement = null;
+    if (this.state.prevPseudoElement) this.state.prevPseudoElement.remove();
+    this.state.dragElement = null;
     this.state.mode = 'hover';
   }
 
@@ -122,68 +125,52 @@ export class AppComponent {
       btn.classList.add('element');
       this.state.copiedElement = btn;
 
-      this.insertElement(event);
+      insertElementNearCursor(event, this.state.copiedElement, this.document);
+      if (this.state.prevPseudoElement) this.state.prevPseudoElement.remove();
     } else {
-      this.selectElement(event);
+      let element = this.selectElementAtCursor(event);
+
+      if (!element) {
+        this.unselectElement(this.state.selectedElement);
+      } else {
+        this.state.selectedElement = element;
+      }
     }
   }
 
-  selectElement(event) {
-    let e = this.getElementBelowCursor(event);
-
-    if (!e) {
-      this.resetSelectedElement();
-      return;
-    }
+  selectElementAtCursor(event) {
+    let e = getElementBelowCursor(this.document, event);
 
     if (this.state.selectedElement) {
       resetAllBorders([this.state.selectedElement]);
       if (e == this.state.selectedElement) {
-        this.resetSelectedElement();
+        this.unselectElement(e);
         return; // unselect current element;
       }
     }
-    this.state.selectedElement = e;
     paintAllBorders([e], '2px solid red');
+
+    return e;
   }
 
-  insertElement(event) {
-    let container = this.getElementBelowCursor(event);
-    let children = Array.from(container.children);
-
-    let sibling = findClosestElement(children, event.x, event.y);
-
-    let edge = 'left';
-    if (sibling && sibling.getBoundingClientRect)
-      edge = findClosestEdge(sibling.getBoundingClientRect(), event.x, event.y);
-
-    if (edge == 'left' || edge == 'top') {
-      container.insertBefore(this.state.copiedElement, sibling);
-    } else {
-      container.insertBefore(this.state.copiedElement, sibling.nextSibling);
-    }
-
-    if (this.state.prevPseudoElement) this.state.prevPseudoElement.remove();
+  unselectElement(element: any) {
+    if (element) resetAllBorders([element]);
+    this.state.selectedElement = null;
+    this.state.mode = 'hover';
   }
 
-  highlightElementAtPoint(event) {
-    let e = this.getElementBelowCursor(event);
-
-    // reset previous hovered element (except if it's selected)
-    if (this.state.prevHover != this.state.selectedElement) {
-      resetAllBorders([this.state.prevHover]);
-    }
-
-    // highlight current hovered element
-    if (!e) return;
-    if (e && e == this.state.selectedElement) return;
-
-    paintAllBorders([e]);
-    this.state.prevHover = e;
-  }
-
-  showPseudoElement(event: any) {
-    let elementBelowCursor = this.getElementBelowCursor(event);
+  insertPseudoElement(event: any) {
+    /** CONDITIONS *
+     * There is an 'element' below cursor.
+     *
+     * ACTIONS *
+     * remove previous pseudo element
+     * find closest element (under element below cursor)
+     * find closest edge of the closest element
+     * add a pseudo element below or above
+     * update state.prevPseudoElement
+     */
+    let elementBelowCursor = getElementBelowCursor(this.document, event);
 
     if (!elementBelowCursor) {
       return;
@@ -221,45 +208,5 @@ export class AppComponent {
     }
 
     this.state.prevPseudoElement = pseudo;
-  }
-
-  highlightClosestRectangleEdges(event: any) {
-    let elementBelowCursor = this.getElementBelowCursor(event);
-
-    if (!elementBelowCursor) {
-      return;
-    }
-
-    if (this.state.prevHighlightedEdgeElement)
-      resetAllBorders([this.state.prevHighlightedEdgeElement]);
-    let elements = Array.from(elementBelowCursor.childNodes);
-
-    let closestElement = findClosestElement(elements, event.x, event.y);
-
-    if (!closestElement) return;
-
-    let closestEdge = findClosestEdge(
-      closestElement.getBoundingClientRect(),
-      event.x,
-      event.y
-    );
-
-    this.state.prevHighlightedEdgeElement = closestElement;
-
-    paintEdge(closestElement, closestEdge);
-  }
-
-  getElementBelowCursor(event: MouseEvent) {
-    let elementFromPoint = this.document.elementFromPoint(event.x, event.y);
-
-    if (!elementFromPoint) {
-      return;
-    }
-
-    let closest = elementFromPoint.classList.contains('element')
-      ? elementFromPoint
-      : elementFromPoint.closest('.element');
-
-    return closest;
   }
 }
