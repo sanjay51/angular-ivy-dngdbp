@@ -5,7 +5,7 @@ export class PseudoElement {
 
   constructor(private document: Document) {}
 
-  insertElement(event: any, element: any) {
+  insert(event: any, container: any) {
     /** CONDITIONS *
      * There is an 'element' below cursor.
      *
@@ -17,12 +17,12 @@ export class PseudoElement {
      * update state.prevPseudoElement
      */
 
-    if (!element) {
+    if (!container) {
       return;
     }
 
     if (this.pseudoElement) this.remove();
-    let elements = Array.from(element.childNodes);
+    let elements = Array.from(container.childNodes);
 
     let closestElement = findClosestElement(elements, event.x, event.y);
 
@@ -39,9 +39,9 @@ export class PseudoElement {
 
     if (closestEdge == 'left' || closestEdge == 'top') {
       // show on left
-      element.insertBefore(pseudo, closestElement);
+      container.insertBefore(pseudo, closestElement);
     } else {
-      element.insertBefore(pseudo, closestElement.nextSibling);
+      container.insertBefore(pseudo, closestElement.nextSibling);
     }
 
     this.pseudoElement = pseudo;

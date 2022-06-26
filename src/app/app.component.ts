@@ -48,7 +48,7 @@ export class AppComponent {
 
   mouseMove(event) {
     if (this.state.mode == 'insert') {
-      this.pseudoElement.insertElement(
+      this.pseudoElement.insert(
         event,
         this.cursorUtils.getElementBelowCursor(event)
       );
@@ -107,7 +107,7 @@ export class AppComponent {
     e.style.top = event.pageY - 100 + 'px';
 
     this.state.dragElement = e;
-    this.pseudoElement.insertElement(
+    this.pseudoElement.insert(
       event,
       this.cursorUtils.getElementBelowCursor(event)
     );
