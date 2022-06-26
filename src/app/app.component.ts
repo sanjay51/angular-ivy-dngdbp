@@ -21,16 +21,21 @@ export class AppComponent {
   @HostListener('document:keydown.escape', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent) {
     this.state.mode = 'hover';
+
+    if (this.state.prevPseudoElement) this.state.prevPseudoElement.remove();
+    this.state.prevPseudoElement = null;
   }
 
   state = {
     copiedElement: null,
     selectedElement: null,
 
-    mode: 'hover', // hover, insert, selected
+    mode: 'hover', // hover, insert, drag
     prevHover: null,
     prevHighlightedEdgeElement: null,
     prevPseudoElement: null,
+
+    dragElement: null,
   };
 
   constructor(@Inject(DOCUMENT) private document: Document) {}
@@ -38,13 +43,61 @@ export class AppComponent {
   @ViewChild('page') page?: ElementRef;
   @ViewChild('output') output?: ElementRef;
 
+  isMouseDown = false;
+  isDrag = false;
+
   mouseMove(event) {
-    if (this.state.mode == 'insert') {
-      this.highlightClosestRectangleEdges(event);
+    if (this.isMouseDown) {
+      this.isDrag = true;
+      this.state.mode = 'drag';
+    }
+
+    if (this.state.mode == 'drag') {
+      this.drag(event);
+      this.showPseudoElement(event);
+    } else if (this.state.mode == 'insert') {
+      //this.highlightClosestRectangleEdges(event);
+      this.showPseudoElement(event);
     } else if (this.state.mode == 'hover') {
       this.highlightElementAtPoint(event);
     } else if (this.state.mode == 'selected') {
     }
+  }
+
+  drag(event) {
+    event.preventDefault();
+
+    let e = this.state.dragElement;
+    if (!e) {
+      e = this.getElementBelowCursor(event) as HTMLElement;
+    }
+
+    if (!e) return;
+
+    e.style.position = 'absolute';
+    e.style.left = event.pageX - 100 + 'px';
+    e.style.top = event.pageY - 100 + 'px';
+
+    this.state.mode = 'drag';
+    this.state.dragElement = e;
+  }
+
+  drop(event) {
+    this.isMouseDown = false;
+    this.isDrag = false;
+
+    let e = this.state.dragElement;
+
+    if (!e) return;
+
+    event.preventDefault();
+    this.state.dragElement.style.position = '';
+    this.state.dragElement.style.left = '';
+    this.state.dragElement.style.top = '';
+    this.state.copiedElement = this.state.dragElement;
+    this.insertElement(event);
+    this.state.dragElement = null;
+    this.state.mode = 'hover';
   }
 
   resetSelectedElement() {
@@ -56,6 +109,8 @@ export class AppComponent {
 
   i = 0;
   click(event) {
+    if (this.isDrag) return;
+
     if (this.state.mode == 'insert') {
       // insert element
       let btn = document.createElement('div');
@@ -63,6 +118,7 @@ export class AppComponent {
       btn.style.border = '1px solid green';
       btn.style.padding = '5px';
       btn.style.margin = '20px';
+      btn.style.display = 'inline-block';
       btn.classList.add('element');
       this.state.copiedElement = btn;
 
@@ -106,6 +162,8 @@ export class AppComponent {
     } else {
       container.insertBefore(this.state.copiedElement, sibling.nextSibling);
     }
+
+    if (this.state.prevPseudoElement) this.state.prevPseudoElement.remove();
   }
 
   highlightElementAtPoint(event) {
@@ -131,26 +189,38 @@ export class AppComponent {
       return;
     }
 
-    if (this.state.prevHighlightedEdgeElement)
-      this.state.prevPseudoElement.remove();
+    if (this.state.prevPseudoElement) this.state.prevPseudoElement.remove();
     let elements = Array.from(elementBelowCursor.childNodes);
 
     let closestElement = findClosestElement(elements, event.x, event.y);
 
-    if (!closestElement) return;
+    let closestEdge = 'left';
+    if (closestElement) {
+      closestEdge = findClosestEdge(
+        closestElement.getBoundingClientRect(),
+        event.x,
+        event.y
+      );
+    }
 
-    let closestEdge = findClosestEdge(
-      closestElement.getBoundingClientRect(),
-      event.x,
-      event.y
-    );
+    // pseudo element
+    let pseudo = document.createElement('div');
+    pseudo.style.border = '1px solid lightgray';
+    pseudo.style.backgroundColor = 'lightgray';
+    pseudo.classList.add('pseudo-element');
+    pseudo.style.padding = '5px';
+    pseudo.style.margin = '2px';
+    pseudo.style.display = 'inline-block';
+    pseudo.classList.add('element');
 
     if (closestEdge == 'left' || closestEdge == 'top') {
       // show on left
+      elementBelowCursor.insertBefore(pseudo, closestElement);
     } else {
+      elementBelowCursor.insertBefore(pseudo, closestElement.nextSibling);
     }
 
-    this.state.prevPseudoElement = closestElement;
+    this.state.prevPseudoElement = pseudo;
   }
 
   highlightClosestRectangleEdges(event: any) {
