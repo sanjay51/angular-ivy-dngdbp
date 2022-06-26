@@ -1,9 +1,10 @@
 <div
   #page
+  class="page"
   style="width: 100%; height: 80vh; padding: 50px; background: whitesmoke; position: relative"
   [style.cursor]="state.mode == 'insert' ? 'copy' : 'default'"
   (mousemove)="mouseMove($event)"
-  (mouseup)="mouseUp($event)"
+  (mouseup)="drop($event)"
   (mousedown)="isMouseDown = true"
   (click)="click($event)"
 >
@@ -20,14 +21,14 @@
 
   <div
     class="element"
-    style="border: 1px solid red; display: inline block; width: 100px; margin: 50px; text-align: center; padding: 20px "
+    style="border: 1px solid red; display: inline block; width: 100px; margin: 5px; text-align: center; padding: 20px "
   >
     rect2
   </div>
 
   <div
     class="element"
-    style="border: 1px solid red; display: inline block; margin: 5px; text-align: center; padding: 20px; position: absolute; top:200px; left: 400px"
+    style="border: 1px solid red; display: inline block; margin: 5px; text-align: center; padding: 20px;"
   >
     rect3
 

@@ -36,7 +36,6 @@ export class AppComponent {
 
     mode: 'hover', // hover, insert, drag
     prevHover: null,
-    prevHighlightedEdgeElement: null,
 
     dragElement: null,
   };
@@ -54,7 +53,7 @@ export class AppComponent {
   isDrag = false;
 
   mouseMove(event) {
-    if (this.isMouseDown) {
+    if (this.isMouseDown || this.state.mode == 'drag') {
       this.drag(event);
     } else if (this.state.mode == 'insert') {
       this.pseudoElement.insertAt(event);
@@ -72,27 +71,31 @@ export class AppComponent {
 
   drag(event) {
     event.preventDefault();
-    this.state.mode == 'drag';
+    this.state.mode = 'drag';
 
     let e = this.state.dragElement;
     if (!e) {
       e = getElementBelowCursor(this.document, event) as HTMLElement;
-    }
 
-    if (!e) return;
+      if (!e) return;
+
+      this.state.dragElement = e.cloneNode(true);
+      e.remove();
+      e = this.state.dragElement;
+    }
 
     e.style.position = 'absolute';
     e.style.left = event.pageX - 100 + 'px';
     e.style.top = event.pageY - 100 + 'px';
 
-    this.state.mode = 'drag';
     this.state.dragElement = e;
     this.pseudoElement.insertAt(event);
   }
 
-  mouseUp(event) {
+  drop(event) {
     this.isMouseDown = false;
     this.isDrag = false;
+    this.state.mode = 'hover';
 
     let e = this.state.dragElement;
 
@@ -108,7 +111,6 @@ export class AppComponent {
     this.pseudoElement.remove();
     this.state.copiedElement = null;
     this.state.dragElement = null;
-    this.state.mode = 'hover';
   }
 
   i = 0;
