@@ -1,12 +1,11 @@
 import { findClosestEdge, findClosestElement } from './algorithms';
-import { getElementBelowCursor } from './cursorUtils';
 
 export class PseudoElement {
   pseudoElement = null;
 
   constructor(private document: Document) {}
 
-  insertAt(event: any) {
+  insertElement(event: any, element: any) {
     /** CONDITIONS *
      * There is an 'element' below cursor.
      *
@@ -17,14 +16,13 @@ export class PseudoElement {
      * add a pseudo element below or above
      * update state.prevPseudoElement
      */
-    let elementBelowCursor = getElementBelowCursor(document, event);
 
-    if (!elementBelowCursor) {
+    if (!element) {
       return;
     }
 
     if (this.pseudoElement) this.remove();
-    let elements = Array.from(elementBelowCursor.childNodes);
+    let elements = Array.from(element.childNodes);
 
     let closestElement = findClosestElement(elements, event.x, event.y);
 
@@ -41,9 +39,9 @@ export class PseudoElement {
 
     if (closestEdge == 'left' || closestEdge == 'top') {
       // show on left
-      elementBelowCursor.insertBefore(pseudo, closestElement);
+      element.insertBefore(pseudo, closestElement);
     } else {
-      elementBelowCursor.insertBefore(pseudo, closestElement.nextSibling);
+      element.insertBefore(pseudo, closestElement.nextSibling);
     }
 
     this.pseudoElement = pseudo;

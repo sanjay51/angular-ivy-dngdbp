@@ -7,13 +7,8 @@ import {
   VERSION,
   ViewChild,
 } from '@angular/core';
-import { findClosestEdge, findClosestElement } from './algorithms';
-import {
-  getElementBelowCursor,
-  hoverElementBelowCursor,
-  insertElementNearCursor,
-} from './cursorUtils';
-import { paintAllBorders, paintEdge, resetAllBorders } from './painter';
+import { CursorUtils } from './cursorUtils';
+import { paintAllBorders, resetAllBorders } from './painter';
 import { PseudoElement } from './pseudoElementHandler';
 
 @Component({
@@ -28,12 +23,10 @@ export class AppComponent {
   handleKeyboardEvent(event: KeyboardEvent) {
     this.state.mode = 'hover';
     this.pseudoElement.remove();
+    this.isMouseDown = false;
   }
 
   state = {
-    copiedElement: null,
-    selectedElement: null,
-
     mode: 'hover', // hover, insert, drag
     prevHover: null,
 
@@ -41,31 +34,56 @@ export class AppComponent {
   };
 
   pseudoElement: PseudoElement;
+  cursorUtils: CursorUtils;
 
   constructor(@Inject(DOCUMENT) private document: Document) {
     this.pseudoElement = new PseudoElement(document);
+    this.cursorUtils = new CursorUtils(document);
   }
 
   @ViewChild('page') page?: ElementRef;
   @ViewChild('output') output?: ElementRef;
 
   isMouseDown = false;
-  isDrag = false;
 
   mouseMove(event) {
-    if (this.isMouseDown || this.state.mode == 'drag') {
-      this.drag(event);
-    } else if (this.state.mode == 'insert') {
-      this.pseudoElement.insertAt(event);
-    } else if (this.state.mode == 'hover') {
-      let e = hoverElementBelowCursor(
-        this.document,
+    if (this.state.mode == 'insert') {
+      this.pseudoElement.insertElement(
         event,
-        this.state.prevHover,
-        this.state.selectedElement
+        this.cursorUtils.getElementBelowCursor(event)
+      );
+    } else if (this.isMouseDown) {
+      this.drag(event);
+    } else if (this.state.mode == 'hover') {
+      let e = this.cursorUtils.hoverElementBelowCursor(
+        event,
+        this.state.prevHover
       );
       this.state.prevHover = e;
-    } else if (this.state.mode == 'selected') {
+    }
+  }
+
+  i = 0;
+  click(event) {
+    if (this.state.mode == 'insert') {
+      // insert element
+      let btn = document.createElement('div');
+      btn.innerHTML = 'Click Me ' + this.i++;
+      btn.style.border = '1px solid green';
+      btn.style.padding = '5px';
+      btn.style.margin = '5px';
+      btn.style.display = 'inline-block';
+      btn.classList.add('element');
+
+      this.cursorUtils.insertElementNearCursor(event, btn);
+      this.pseudoElement.remove();
+    } else {
+      let element = this.cursorUtils.selectElementAtCursor(event);
+
+      if (!element) {
+        this.cursorUtils.unselectElement();
+        this.state.mode = 'hover';
+      }
     }
   }
 
@@ -75,7 +93,7 @@ export class AppComponent {
 
     let e = this.state.dragElement;
     if (!e) {
-      e = getElementBelowCursor(this.document, event, true) as HTMLElement;
+      e = this.cursorUtils.getElementBelowCursor(event, true) as HTMLElement;
 
       if (!e) return;
 
@@ -89,12 +107,16 @@ export class AppComponent {
     e.style.top = event.pageY - 100 + 'px';
 
     this.state.dragElement = e;
-    this.pseudoElement.insertAt(event);
+    this.pseudoElement.insertElement(
+      event,
+      this.cursorUtils.getElementBelowCursor(event)
+    );
   }
 
   drop(event) {
+    if (this.state.mode == 'insert') return;
+
     this.isMouseDown = false;
-    this.isDrag = false;
     this.state.mode = 'hover';
 
     let e = this.state.dragElement;
@@ -105,62 +127,9 @@ export class AppComponent {
     this.state.dragElement.style.position = '';
     this.state.dragElement.style.left = '';
     this.state.dragElement.style.top = '';
-    this.state.copiedElement = this.state.dragElement;
-    insertElementNearCursor(event, this.state.copiedElement, this.document);
+    this.cursorUtils.insertElementNearCursor(event, this.state.dragElement);
 
     this.pseudoElement.remove();
-    this.state.copiedElement = null;
     this.state.dragElement = null;
-  }
-
-  i = 0;
-  click(event) {
-    if (this.isDrag) return;
-
-    if (this.state.mode == 'insert') {
-      // insert element
-      let btn = document.createElement('div');
-      btn.innerHTML = 'Click Me ' + this.i++;
-      btn.style.border = '1px solid green';
-      btn.style.padding = '5px';
-      btn.style.margin = '5px';
-      btn.style.display = 'inline-block';
-      btn.classList.add('element');
-      this.state.copiedElement = btn;
-
-      insertElementNearCursor(event, this.state.copiedElement, this.document);
-      this.pseudoElement.remove();
-    } else {
-      let element = this.selectElementAtCursor(event);
-
-      if (!element) {
-        this.unselectElement(this.state.selectedElement);
-      } else {
-        this.state.selectedElement = element;
-      }
-    }
-  }
-
-  selectElementAtCursor(event) {
-    let e = getElementBelowCursor(this.document, event);
-
-    if (!e) return;
-
-    if (this.state.selectedElement) {
-      resetAllBorders([this.state.selectedElement]);
-      if (e == this.state.selectedElement) {
-        this.unselectElement(e);
-        return; // unselect current element;
-      }
-    }
-    paintAllBorders([e], '2px solid red');
-
-    return e;
-  }
-
-  unselectElement(element: any) {
-    if (element) resetAllBorders([element]);
-    this.state.selectedElement = null;
-    this.state.mode = 'hover';
   }
 }

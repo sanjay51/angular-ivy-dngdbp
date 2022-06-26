@@ -1,54 +1,49 @@
 import { findClosestEdge, findClosestElement } from './algorithms';
 import { paintAllBorders, resetAllBorders } from './painter';
 
-export function getElementBelowCursor(
-  document: any,
-  event: MouseEvent,
-  isDrag = false
-) {
-  let elementFromPoint = document.elementFromPoint(event.x, event.y);
+export class CursorUtils {
+  constructor(private document: Document) {}
 
-  if (!elementFromPoint) {
-    return;
-  }
+  selectedElement = null;
+  public getElementBelowCursor(event: MouseEvent, isDrag = false) {
+    let elementFromPoint = this.document.elementFromPoint(event.x, event.y);
 
-  let closest = elementFromPoint.classList.contains('element')
-    ? elementFromPoint
-    : elementFromPoint.closest('.element');
+    if (!elementFromPoint) {
+      return;
+    }
 
-  if (!closest && !isDrag) {
-    closest = elementFromPoint.classList.contains('page')
+    let closest = elementFromPoint.classList.contains('element')
       ? elementFromPoint
-      : elementFromPoint.closest('.page');
+      : elementFromPoint.closest('.element');
+
+    if (!closest && !isDrag) {
+      closest = elementFromPoint.classList.contains('page')
+        ? elementFromPoint
+        : elementFromPoint.closest('.page');
+    }
+
+    return closest;
   }
 
-  return closest;
-}
+  public insertElementNearCursor(event, element: any) {
+    let container = this.getElementBelowCursor(event);
+    let children = Array.from(container.children);
 
-export function insertElementNearCursor(event, element: any, document: any) {
-  let container = getElementBelowCursor(document, event);
-  let children = Array.from(container.children);
+    let sibling = findClosestElement(children, event.x, event.y);
 
-  let sibling = findClosestElement(children, event.x, event.y);
+    let edge = 'left';
+    if (sibling && sibling.getBoundingClientRect)
+      edge = findClosestEdge(sibling.getBoundingClientRect(), event.x, event.y);
 
-  let edge = 'left';
-  if (sibling && sibling.getBoundingClientRect)
-    edge = findClosestEdge(sibling.getBoundingClientRect(), event.x, event.y);
-
-  if (edge == 'left' || edge == 'top') {
-    container.insertBefore(element, sibling);
-  } else {
-    container.insertBefore(element, sibling.nextSibling);
+    if (edge == 'left' || edge == 'top') {
+      container.insertBefore(element, sibling);
+    } else {
+      container.insertBefore(element, sibling.nextSibling);
+    }
   }
-}
 
-export function hoverElementBelowCursor(
-  document: any,
-  event,
-  prevHoverElement,
-  currentSelectedElement: any
-) {
-  /** CONDITIONS **
+  public hoverElementBelowCursor(event, prevHoverElement) {
+    /** CONDITIONS **
     * There is an 'element' below cursor
     * It's not already selected.
 
@@ -58,17 +53,40 @@ export function hoverElementBelowCursor(
     * update state.prevHover
   */
 
-  // reset previous hovered element (except if it's selected)
-  if (prevHoverElement && prevHoverElement != currentSelectedElement) {
-    resetAllBorders([prevHoverElement]);
+    // reset previous hovered element (except if it's selected)
+    if (prevHoverElement && prevHoverElement != this.selectedElement) {
+      resetAllBorders([prevHoverElement]);
+    }
+
+    let e = this.getElementBelowCursor(event);
+
+    // highlight current hovered element
+    if (!e) return;
+    if (e && e == this.selectedElement) return;
+
+    paintAllBorders([e]);
+    return e;
   }
 
-  let e = getElementBelowCursor(document, event);
+  public selectElementAtCursor(event) {
+    let e = this.getElementBelowCursor(event);
 
-  // highlight current hovered element
-  if (!e) return;
-  if (e && e == currentSelectedElement) return;
+    if (!e) return;
 
-  paintAllBorders([e]);
-  return e;
+    if (this.selectedElement) {
+      resetAllBorders([this.selectedElement]);
+      if (e == this.selectedElement) {
+        this.unselectElement();
+        return; // unselect current element;
+      }
+    }
+    paintAllBorders([e], '2px solid red');
+
+    return e;
+  }
+
+  public unselectElement() {
+    if (this.selectedElement) resetAllBorders([this.selectedElement]);
+    this.selectedElement = null;
+  }
 }
