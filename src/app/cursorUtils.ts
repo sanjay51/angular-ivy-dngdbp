@@ -81,6 +81,7 @@ export class CursorUtils {
       }
     }
     paintAllBorders([e], '2px solid red');
+    this.selectedElement = e;
 
     return e;
   }

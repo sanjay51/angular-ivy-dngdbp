@@ -8,7 +8,6 @@ import {
   ViewChild,
 } from '@angular/core';
 import { CursorUtils } from './cursorUtils';
-import { paintAllBorders, resetAllBorders } from './painter';
 import { PseudoElement } from './pseudoElementHandler';
 
 @Component({
