@@ -75,7 +75,7 @@ export class AppComponent {
 
     let e = this.state.dragElement;
     if (!e) {
-      e = getElementBelowCursor(this.document, event) as HTMLElement;
+      e = getElementBelowCursor(this.document, event, true) as HTMLElement;
 
       if (!e) return;
 

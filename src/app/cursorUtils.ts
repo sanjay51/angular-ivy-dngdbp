@@ -1,7 +1,11 @@
 import { findClosestEdge, findClosestElement } from './algorithms';
 import { paintAllBorders, resetAllBorders } from './painter';
 
-export function getElementBelowCursor(document: any, event: MouseEvent) {
+export function getElementBelowCursor(
+  document: any,
+  event: MouseEvent,
+  isDrag = false
+) {
   let elementFromPoint = document.elementFromPoint(event.x, event.y);
 
   if (!elementFromPoint) {
@@ -11,6 +15,12 @@ export function getElementBelowCursor(document: any, event: MouseEvent) {
   let closest = elementFromPoint.classList.contains('element')
     ? elementFromPoint
     : elementFromPoint.closest('.element');
+
+  if (!closest && !isDrag) {
+    closest = elementFromPoint.classList.contains('page')
+      ? elementFromPoint
+      : elementFromPoint.closest('.page');
+  }
 
   return closest;
 }
