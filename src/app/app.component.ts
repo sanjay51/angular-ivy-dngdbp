@@ -88,6 +88,7 @@ export class AppComponent {
 
     let e = this.state.dragElement;
     if (!e) {
+      // start drag
       e = this.cursorUtils.getElementBelowCursor(event, true) as HTMLElement;
 
       if (!e) return;
@@ -97,11 +98,6 @@ export class AppComponent {
       e = this.state.dragElement;
     }
 
-    e.style.position = 'absolute';
-    e.style.left = event.pageX - 100 + 'px';
-    e.style.top = event.pageY - 100 + 'px';
-
-    this.state.dragElement = e;
     this.pseudoElement.insert(
       event,
       this.cursorUtils.getElementBelowCursor(event)
