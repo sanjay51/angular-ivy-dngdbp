@@ -33,6 +33,7 @@ export function insertElementNearCursor(event, element: any, document: any) {
 }
 
 export function hoverElementBelowCursor(
+  document: any,
   event,
   prevHoverElement,
   currentSelectedElement: any
@@ -46,17 +47,18 @@ export function hoverElementBelowCursor(
     * paint current hover element.
     * update state.prevHover
   */
-  let e = getElementBelowCursor(this.document, event);
+
+  // reset previous hovered element (except if it's selected)
+  if (prevHoverElement && prevHoverElement != currentSelectedElement) {
+    resetAllBorders([prevHoverElement]);
+  }
+
+  let e = getElementBelowCursor(document, event);
 
   // highlight current hovered element
   if (!e) return;
   if (e && e == currentSelectedElement) return;
 
-  // reset previous hovered element (except if it's selected)
-  if (prevHoverElement != currentSelectedElement) {
-    resetAllBorders([this.state.prevHover]);
-  }
-
   paintAllBorders([e]);
-  this.state.prevHover = e;
+  return e;
 }

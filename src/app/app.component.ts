@@ -14,6 +14,7 @@ import {
   insertElementNearCursor,
 } from './cursorUtils';
 import { paintAllBorders, paintEdge, resetAllBorders } from './painter';
+import { PseudoElement } from './pseudoElementHandler';
 
 @Component({
   selector: 'my-app',
@@ -26,9 +27,7 @@ export class AppComponent {
   @HostListener('document:keydown.escape', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent) {
     this.state.mode = 'hover';
-
-    if (this.state.prevPseudoElement) this.state.prevPseudoElement.remove();
-    this.state.prevPseudoElement = null;
+    this.pseudoElement.remove();
   }
 
   state = {
@@ -38,12 +37,15 @@ export class AppComponent {
     mode: 'hover', // hover, insert, drag
     prevHover: null,
     prevHighlightedEdgeElement: null,
-    prevPseudoElement: null,
 
     dragElement: null,
   };
 
-  constructor(@Inject(DOCUMENT) private document: Document) {}
+  pseudoElement: PseudoElement;
+
+  constructor(@Inject(DOCUMENT) private document: Document) {
+    this.pseudoElement = new PseudoElement(document);
+  }
 
   @ViewChild('page') page?: ElementRef;
   @ViewChild('output') output?: ElementRef;
@@ -53,27 +55,24 @@ export class AppComponent {
 
   mouseMove(event) {
     if (this.isMouseDown) {
-      this.isDrag = true;
-      this.state.mode = 'drag';
-    }
-
-    if (this.state.mode == 'drag') {
       this.drag(event);
-      this.insertPseudoElement(event);
     } else if (this.state.mode == 'insert') {
-      this.insertPseudoElement(event);
+      this.pseudoElement.insertAt(event);
     } else if (this.state.mode == 'hover') {
-      hoverElementBelowCursor(
+      let e = hoverElementBelowCursor(
+        this.document,
         event,
         this.state.prevHover,
         this.state.selectedElement
       );
+      this.state.prevHover = e;
     } else if (this.state.mode == 'selected') {
     }
   }
 
   drag(event) {
     event.preventDefault();
+    this.state.mode == 'drag';
 
     let e = this.state.dragElement;
     if (!e) {
@@ -88,9 +87,10 @@ export class AppComponent {
 
     this.state.mode = 'drag';
     this.state.dragElement = e;
+    this.pseudoElement.insertAt(event);
   }
 
-  drop(event) {
+  mouseUp(event) {
     this.isMouseDown = false;
     this.isDrag = false;
 
@@ -105,7 +105,8 @@ export class AppComponent {
     this.state.copiedElement = this.state.dragElement;
     insertElementNearCursor(event, this.state.copiedElement, this.document);
 
-    if (this.state.prevPseudoElement) this.state.prevPseudoElement.remove();
+    this.pseudoElement.remove();
+    this.state.copiedElement = null;
     this.state.dragElement = null;
     this.state.mode = 'hover';
   }
@@ -120,13 +121,13 @@ export class AppComponent {
       btn.innerHTML = 'Click Me ' + this.i++;
       btn.style.border = '1px solid green';
       btn.style.padding = '5px';
-      btn.style.margin = '20px';
+      btn.style.margin = '5px';
       btn.style.display = 'inline-block';
       btn.classList.add('element');
       this.state.copiedElement = btn;
 
       insertElementNearCursor(event, this.state.copiedElement, this.document);
-      if (this.state.prevPseudoElement) this.state.prevPseudoElement.remove();
+      this.pseudoElement.remove();
     } else {
       let element = this.selectElementAtCursor(event);
 
@@ -140,6 +141,8 @@ export class AppComponent {
 
   selectElementAtCursor(event) {
     let e = getElementBelowCursor(this.document, event);
+
+    if (!e) return;
 
     if (this.state.selectedElement) {
       resetAllBorders([this.state.selectedElement]);
@@ -157,56 +160,5 @@ export class AppComponent {
     if (element) resetAllBorders([element]);
     this.state.selectedElement = null;
     this.state.mode = 'hover';
-  }
-
-  insertPseudoElement(event: any) {
-    /** CONDITIONS *
-     * There is an 'element' below cursor.
-     *
-     * ACTIONS *
-     * remove previous pseudo element
-     * find closest element (under element below cursor)
-     * find closest edge of the closest element
-     * add a pseudo element below or above
-     * update state.prevPseudoElement
-     */
-    let elementBelowCursor = getElementBelowCursor(this.document, event);
-
-    if (!elementBelowCursor) {
-      return;
-    }
-
-    if (this.state.prevPseudoElement) this.state.prevPseudoElement.remove();
-    let elements = Array.from(elementBelowCursor.childNodes);
-
-    let closestElement = findClosestElement(elements, event.x, event.y);
-
-    let closestEdge = 'left';
-    if (closestElement) {
-      closestEdge = findClosestEdge(
-        closestElement.getBoundingClientRect(),
-        event.x,
-        event.y
-      );
-    }
-
-    // pseudo element
-    let pseudo = document.createElement('div');
-    pseudo.style.border = '1px solid lightgray';
-    pseudo.style.backgroundColor = 'lightgray';
-    pseudo.classList.add('pseudo-element');
-    pseudo.style.padding = '5px';
-    pseudo.style.margin = '2px';
-    pseudo.style.display = 'inline-block';
-    pseudo.classList.add('element');
-
-    if (closestEdge == 'left' || closestEdge == 'top') {
-      // show on left
-      elementBelowCursor.insertBefore(pseudo, closestElement);
-    } else {
-      elementBelowCursor.insertBefore(pseudo, closestElement.nextSibling);
-    }
-
-    this.state.prevPseudoElement = pseudo;
   }
 }
